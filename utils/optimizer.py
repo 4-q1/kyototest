@@ -40,6 +40,7 @@ I_MASTER = [
     {"name": "京都国立近代美術館", "point": 39.3, "pos": (35.01236292263256, 135.7822085772071), "genre": "", "time": 60}
 ]
 
+# 距離行列の作成
 def create_distance_matrix(I):
     d = {}
     for i in I:
@@ -52,22 +53,23 @@ def create_distance_matrix(I):
                 d[i["name"], j["name"]] = int(dist_km / speed_kmpm)
     return d
 
+# 名前から観光地情報を取得
 def get_list_name(name, I):
     for i in I:
         if i["name"] == name:
             return i
     return None
 
+# 経路を再帰的に求める
 def out_path(s, i, I, x):
-    retstr = ""
-    if i == s:
-        retstr = s["name"]
+    retstr = s["name"]
     for j in I:
         if i != j and value(x[i["name"], j["name"]]) == 1:
             retstr += "→" + j["name"]
             return retstr + out_path(s, j, I, x)
     return retstr
 
+# 観光地ルート最適化
 def solve_day(t, s, g, T, I):
     d = create_distance_matrix(I)
     a = {i["name"]: i["point"] for i in I}
@@ -108,7 +110,7 @@ def solve_day(t, s, g, T, I):
     for i in I:
         for j in I:
             if i != j:
-                prob += f[i['name'], j['name']] <= n * x[i['name'], j['name']]
+                prob += f[i['name'], j['name']] <= n * x[i['name'], j['name']]  # フロー制約の強化
 
     prob += y[s["name"]] == 1
     if s != g:
@@ -121,7 +123,8 @@ def solve_day(t, s, g, T, I):
 
     result = prob.solve()
 
-    if prob.status == 1:
+    # プロブレムの状態を確認
+    if result == 1:  # 成功した場合
         used_time = floor(value(lpSum(d[i['name'], j['name']] * x[i['name'], j['name']] for i in I for j in I if i != j) +
                                  lpSum(b[k['name']] * y[k['name']] for k in I)))
         route = out_path(s, s, I, x)[:-4]
@@ -138,3 +141,11 @@ def solve_day(t, s, g, T, I):
         }
     else:
         return {"status": "fail", "reason": "時間が不足しているか、解が存在しません"}
+
+# 実行例
+start = I_MASTER[0]  # 出発地点
+goal = I_MASTER[-1]  # 最終地点
+time_limit = 360  # 時間制限（分）
+
+result = solve_day(0, start, goal, time_limit, I_MASTER)
+print(result)
