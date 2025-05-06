@@ -44,8 +44,12 @@ def create_distance_matrix(I):
     d = {}
     for i in I:
         for j in I:
-            if i != j:
-                d[i["name"], j["name"]] = int(geodesic(i["pos"], j["pos"]).minutes)
+            if i["name"] == j["name"]:
+                d[i["name"], j["name"]] = 0
+            else:
+                dist_km = geodesic(i["pos"], j["pos"]).km
+                speed_kmpm = 5 / 60  # 5 km/h = 0.083 km/min
+                d[i["name"], j["name"]] = int(dist_km / speed_kmpm)
     return d
 
 def get_list_name(name, I):
@@ -68,9 +72,7 @@ def solve_day(t, s, g, T, I):
     d = create_distance_matrix(I)
     a = {i["name"]: i["point"] for i in I}
     b = {i["name"]: i["time"] for i in I}
-    x = {}
-    y = {}
-    f = {}
+    x, y, f = {}, {}, {}
     n = len(I)
 
     if s != g:
@@ -85,14 +87,19 @@ def solve_day(t, s, g, T, I):
                 x[i['name'], j['name']] = LpVariable(f"x({i['name']},{j['name']})", 0, 1, LpBinary)
                 f[i['name'], j['name']] = LpVariable(f"f({i['name']},{j['name']})", 0, None, LpInteger)
 
+    # 目的関数
     prob += lpSum(y[i["name"]] * a[i["name"]] for i in I)
+
+    # 時間制限
     prob += lpSum(d[i['name'], j['name']] * x[i['name'], j['name']] for i in I for j in I if i != j) + \
             lpSum(b[k['name']] * y[k['name']] for k in I) <= T
 
+    # 出入りは1回
     for i in I:
         prob += lpSum(x[i['name'], j['name']] for j in I if i != j) == y[i['name']]
         prob += lpSum(x[j['name'], i['name']] for j in I if i != j) == y[i['name']]
 
+    # フロー制約
     for i in I:
         if i != s:
             prob += lpSum(f[h['name'], i['name']] for h in I if i != h) + y[i['name']] == \
