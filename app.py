@@ -4,6 +4,7 @@ from utils.optimizer import I_MASTER, get_list_name, solve_day
 
 app = Flask(__name__)
 CORS(app, origins=["https://4-q1.github.io"])
+
 @app.route("/")
 def index():
     return "running"
