@@ -15,13 +15,25 @@ def optimize():
     days = data.get("days")
     limits = data.get("time_limits")
     destinations = data.get("via")
-    
+
+    # 入力チェック
+    if not isinstance(days, int) or not isinstance(limits, list) or not isinstance(destinations, list):
+        return jsonify({"status": "fail", "reason": "不正な形式です"}), 400
+    if len(limits) != days or len(destinations) != days:
+        return jsonify({"status": "fail", "reason": "日数と配列の長さが一致しません"}), 400
+
     I = I_MASTER.copy()
     start = get_list_name("京都駅", I)
+    if start is None:
+        return jsonify({"status": "fail", "reason": "京都駅が地点リストに存在しません"}), 500
+
     results = []
 
     for t in range(days):
         goal = get_list_name(destinations[t], I)
+        if goal is None:
+            return jsonify({"status": "fail", "reason": f"{destinations[t]} が地点リストに存在しません"}), 400
+
         result = solve_day(t, start, goal, limits[t], I)
         results.append(result)
         start = goal
