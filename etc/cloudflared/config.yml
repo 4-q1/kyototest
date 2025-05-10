@@ -1,0 +1,12 @@
+tunnel: <TUNNEL_ID>  # Cloudflare TunnelのID
+credentials-file: /path/to/your/.cloudflared/credentials.json  # 認証情報のパス
+
+# サービスの設定
+ingress:
+  - hostname: <TUNNEL_ID>.cfargotunnel.com  # Cloudflareが提供するサブドメイン
+    service: http://localhost:5000  # Flaskサーバーのローカルポート。Flaskのポート番号を指定
+  - service: http_status:404  # その他のリクエストは404エラーを返す
+
+# ログの設定（オプション）
+logfile: /var/log/cloudflared.log  # ログファイルの保存場所
+loglevel: info  # ログレベル。debug, info, warn, errorなど
