@@ -3,6 +3,7 @@ from math import floor
 from pulp import *
 import numpy as np
 
+# 観光地マスターデータ
 I_MASTER = [
     {"name": "京都駅", "point": 0, "pos": (34.98612252336533, 135.75900713517134), "genre": "", "time": 0},
     {"name": "清水寺", "point": 90.8, "pos": (34.994896155999626, 135.78505762495345), "genre": "", "time": 60},
@@ -53,23 +54,28 @@ def create_distance_matrix(I):
                 d[i["name"], j["name"]] = int(dist_km / speed_kmpm)
     return d
 
-# 名前から観光地情報を取得
-def get_list_name(name, I):
-    for i in I:
-        if i["name"] == name:
-            return i
-    return None
+# ルートをループで復元（非再帰）
+def out_path(start, I, x):
+    current = start["name"]
+    visited = set()
+    path = [current]
 
-# 経路を再帰的に求める
-def out_path(s, i, I, x):
-    retstr = s["name"]
-    for j in I:
-        if i != j and value(x[i["name"], j["name"]]) == 1:
-            retstr += "→" + j["name"]
-            return retstr + out_path(s, j, I, x)
-    return retstr
+    while True:
+        found = False
+        for j in I:
+            j_name = j["name"]
+            if current != j_name and value(x[current, j_name]) == 1 and j_name not in visited:
+                visited.add(current)
+                path.append(j_name)
+                current = j_name
+                found = True
+                break
+        if not found:
+            break
 
-# 観光地ルート最適化
+    return "→".join(path)
+
+# 1日分の観光最適化
 def solve_day(t, s, g, T, I):
     d = create_distance_matrix(I)
     a = {i["name"]: i["point"] for i in I}
@@ -89,19 +95,15 @@ def solve_day(t, s, g, T, I):
                 x[i['name'], j['name']] = LpVariable(f"x({i['name']},{j['name']})", 0, 1, LpBinary)
                 f[i['name'], j['name']] = LpVariable(f"f({i['name']},{j['name']})", 0, None, LpInteger)
 
-    # 目的関数
     prob += lpSum(y[i["name"]] * a[i["name"]] for i in I)
 
-    # 時間制限
     prob += lpSum(d[i['name'], j['name']] * x[i['name'], j['name']] for i in I for j in I if i != j) + \
             lpSum(b[k['name']] * y[k['name']] for k in I) <= T
 
-    # 出入りは1回
     for i in I:
         prob += lpSum(x[i['name'], j['name']] for j in I if i != j) == y[i['name']]
         prob += lpSum(x[j['name'], i['name']] for j in I if i != j) == y[i['name']]
 
-    # フロー制約
     for i in I:
         if i != s:
             prob += lpSum(f[h['name'], i['name']] for h in I if i != h) + y[i['name']] == \
@@ -110,7 +112,7 @@ def solve_day(t, s, g, T, I):
     for i in I:
         for j in I:
             if i != j:
-                prob += f[i['name'], j['name']] <= n * x[i['name'], j['name']]  # フロー制約の強化
+                prob += f[i['name'], j['name']] <= n * x[i['name'], j['name']]
 
     prob += y[s["name"]] == 1
     if s != g:
@@ -123,15 +125,12 @@ def solve_day(t, s, g, T, I):
 
     result = prob.solve()
 
-    # プロブレムの状態を確認
-    if result == 1:  # 成功した場合
+    if result == 1:
         used_time = floor(value(lpSum(d[i['name'], j['name']] * x[i['name'], j['name']] for i in I for j in I if i != j) +
                                  lpSum(b[k['name']] * y[k['name']] for k in I)))
-        route = out_path(s, s, I, x)[:-4]
+        route = out_path(s, I, x)
         if s != g:
             used_time -= d[s["name"], g["name"]]
-        else:
-            route += "→" + g["name"]
         return {
             "status": "success",
             "day": t + 1,
