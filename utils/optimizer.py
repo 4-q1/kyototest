@@ -40,6 +40,11 @@ I_MASTER = [
     {"name": "漢字ミュージアム", "point": 40.1, "pos": (35.00341892370984, 135.77661680871813), "genre": "", "time": 60},
     {"name": "京都国立近代美術館", "point": 39.3, "pos": (35.01236292263256, 135.7822085772071), "genre": "", "time": 60}
 ]
+def get_list_name(name, I):
+    for i in I:
+        if i["name"] == name:
+            return i
+    return None
 
 # 距離行列の作成
 def create_distance_matrix(I):
